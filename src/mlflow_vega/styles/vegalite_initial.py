@@ -60,7 +60,7 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
             reference_data: str = REFERENCE_DATA,
             source_data: Optional[str] = None,
             transformed_spec: Optional[Mapping[str, Dict[str, List]]] = None,
-            transformers: Optional[List] = None,
+            transformers: Optional[List] = None, # TODO implement transformers, likely in another module
     ):
 
         self.base_spec = base_spec
