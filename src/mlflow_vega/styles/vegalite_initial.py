@@ -221,7 +221,7 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
         return validation_spec
 
     def predict(
-            self, context: Optional[List] = None, model_input: Optional[pd.DataFrame | str] = None
+            self, context: Optional[List] = None, model_input= None
     ) -> Mapping[str, Dict[str, List]]:
         """
         This is an implementation of the predict function associated with MLflow's pyfunc
