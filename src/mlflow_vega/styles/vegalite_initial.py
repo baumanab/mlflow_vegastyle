@@ -87,7 +87,7 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
     @classmethod
     def create_artifact_folders(
             cls, target_folders: Optional[List[str]] = None
-    ) -> IO[str]:
+    ):
         """
         Creates a folder to house artifacts (specs in this case) if one does not
         already exist.
@@ -96,7 +96,7 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
             IO[str]: [description]
         """
 
-        cls.all_folders = {"spec_folder": "vg_viz_specs"}
+        cls.all_folders = {"spec_folder": "spec"}
 
         if target_folders:
             folders_to_create = {
