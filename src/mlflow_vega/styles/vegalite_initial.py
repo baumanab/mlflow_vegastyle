@@ -174,7 +174,7 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
 
     def fit(
             self, transformed_spec: Mapping[str, Dict[str, List]], data_to_fit_spec: str
-    ) -> Tuple(Mapping[str, Dict[str, List]]:
+    ):
         """
         A fit function that joins a transformed spec with a data location
         via a string object.
