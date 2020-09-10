@@ -16,6 +16,11 @@ import pandas as pd  # to support builtin model deployment apis
 # Define the model class
 
 """
+
+TODO: Consilidate the fit, predict, and validation methods
+into a custom display method that passes a data location to a model 
+and emits an object for display.
+
 For this class I want the following
 - specs:
     + base
@@ -24,10 +29,11 @@ For this class I want the following
     + transform:  accepts transformers and creates a transformed spec
     + fit (populates data field)
     + validate: uses fit and produces a viz using the transformed or base specs, with a validation data set
-    +
+    + predict: passes a data location string to the transformed spec stored in the transformed spec attribute
 - data:
     + source_data
     + reference_data: for validation
+    
 The idea is that someone can start off with a base spec or submit one
 they can start with a transformed spec, use the base spec as the transformed spec
 or submit a lit of funcs (or maybe a dict of funcs etc) and run a pipeline
@@ -36,8 +42,6 @@ They can add source_data (need a better name) to look at their data of interest 
 The class instance stores this state, that gets serialized and stored (hopefully including the
 transformers used, but thaty may take some wrangling).  The fit method is used to add
 the data to the spec object.
-Returns:
-    [type] -- [description]
 """
 
 
@@ -85,9 +89,8 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
             cls, target_folders: Optional[List[str]] = None
     ) -> IO[str]:
         """
-        [summary]
-
-        [extended_summary]
+        Creates a folder to house artifacts (specs in this case) if one does not
+        already exist.
 
         Returns:
             IO[str]: [description]
@@ -117,9 +120,7 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
             indent: int = 4,
     ) -> IO[bytes]:
         """
-        [summary]
-
-        [extended_summary]
+        Accepts a vega specification and writes it to a file.
 
         Args:
             spec_to_write (Mapping[str, Dict[str, List]]): [description]
@@ -137,15 +138,22 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
             self, base_spec: Mapping[str, Dict[str, List]], *args, **kwargs
     ) -> Mapping[str, Dict[str, List]]:
         """
-        [summary]
-
-        [extended_summary]
-
+        This is the initial implementation of a transform pipeline for Vega Specs,
+        it accepts a base spec (a spec to serve as the foundation for the transformed
+        spec) and returns a transformed spec.
+        
+        Currently 
         Args:
-            base_spec (Mapping[str, Dict[str, List]]): [description]
+            base_spec (Mapping[str, Dict[str, List]]): A vegalite spec to serve
+            as the basis of the transform.  Currently this function just returns
+            the "transformed_spec" attribute, such that you can transform the base spec
+            manually, or just start with a "transformed spec" and store it in a class
+            instance.
+            
+            This method also creates artifact folders and writes the spec to a file.
 
         Returns:
-            Mapping[str, Dict[str, List]]: [description]
+            transformed_spec (Mapping[str, Dict[str, List]]): [description]
         """
 
         # TODO: unpack args and kwargs and then insert into base spec where kwargs
@@ -166,18 +174,20 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
 
     def fit(
             self, transformed_spec: Mapping[str, Dict[str, List]], data_to_fit_spec: str
-    ) -> Mapping[str, Dict[str, List]]:
+    ) -> Tuple(Mapping[str, Dict[str, List]]:
         """
-        [summary]
-
-        [extended_summary]
+        A fit function that joins a transformed spec with a data location
+        via a string object.
 
         Args:
-            transformed_spec (Mapping[str, Dict[str, List]]): [description]
-            data_to_fit_spec (str): [description]
+            transformed_spec (Mapping[str, Dict[str, List]]): A vegalite specification
+            data_to_fit_spec (str): A string representing a data location.
 
         Returns:
-            Mapping[str, Dict[str, List]]: [description]
+            The return is a Tuple of two objects:
+            fitted_spec (Mapping[str, Dict[str, List]]): A vegalite specification
+            "fit" with a data location.
+            A string representation of the vegalite spec json object.
         """
 
         # TODO: implement population of data field
@@ -189,12 +199,14 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
 
     def validate(self) -> Mapping[str, Dict[str, List]]:
         """
-        [summary]
-
-        [extended_summary]
-
+        This is similiar to fit and needs to be evaluated to see if it
+        makes sense.  The point of this function is to fit it with 
+        a spec that gives a known visualization output as a "reality check"
+        validation, prior to pointing at other data sources.
+        
         Returns:
-            Mapping[str, Dict[str, List]]: [description]
+            validation_spec (Mapping[str, Dict[str, List]]): A vegalite spec
+            "fit" with a validation/reality check data location.
         """
 
         validation_spec = copy.deepcopy(self.transformed_spec)
@@ -209,23 +221,27 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
         return validation_spec
 
     def predict(
-            self, context: Optional[List] = None, model_input: Optional[pd.DataFrame] = None
+            self, context: Optional[List] = None, model_input: Optional[pd.DataFrame | str] = None
     ) -> Mapping[str, Dict[str, List]]:
         """
-        [summary]
-
-        [extended_summary]
+        This is an implementation of the predict function associated with MLflow's pyfunc
+        flavor.  The type check is an adaptation to an older version (current at the time
+        it was initially implemented), which only accepted arrays/dfs to facilitate passing a string (data location)
+        rather than a dataframe.  This is basically just a way to pass an arbritray
+        data location to transformed spec.  
 
         Args:
-            model_input (Optional[pd.Dataframe]): [a path to data]
+            model_input (Optional[pd.Dataframe] | str): A path to data in a sting object or pandas dataframe
             Note that a Pandas DataFrame is the expected input type when this function is used
             with the builtin model serve API invocation endpoint.  For other use cases, where
             the function is loaded and used directly, a string can be passed.
             context (Optional[List], optional): [description]. Defaults to None.
 
         Returns:
-            Mapping[str, Dict[str, List]]: [description]
+            predict_spec (Mapping[str, Dict[str, List]]): Transformed spec attribute populated with
+            a data location.
         """
+             
         predict_spec = copy.deepcopy(self.transformed_spec)
 
         # accomodate the builtin model deployment api, which requires pandas
@@ -244,31 +260,19 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
 
     @property
     def artifacts(self):
+        
+         """
+        Contents of the spec folder as an attribute.
+        """
 
         artifacts = {"spec_files": VGL_VIZ.all_folders.get("spec_folder")}
 
         return artifacts
 
     def __str__(self):
-        """
-        [summary]
-
-        [extended_summary]
-
-        Returns:
-            [type]: [description]
-        """
+       
         return self.__repr__()
 
     def __repr__(self):
-        """
-        [summary]
-
-        [extended_summary]
-
-        Returns:
-            [type]: [description]
-        """
+               
         return json.dumps(self.__dict__)
-
-    # TODO: implement model logging
