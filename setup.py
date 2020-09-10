@@ -19,6 +19,7 @@ setup(
         'mlflow==1.10.0',
         'PyYAML==5.3.1',
         'altair==4.1.0',
+        'altair_viewer',
     ],
     extras_require={
     },
@@ -28,7 +29,7 @@ setup(
     entry_points="""
     [console_scripts]
     """,
-    python_requires=">=3.8",
+    python_requires=">=3.7",
     classifiers=[
         "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: MIT License",
