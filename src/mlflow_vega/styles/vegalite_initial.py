@@ -261,7 +261,7 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
     @property
     def artifacts(self):
         
-         """
+        """
         Contents of the spec folder as an attribute.
         """
 
