@@ -6,12 +6,13 @@ import importlib
 import os
 import copy
 import json
+from pydoc import replace
 
 # External Libraries
 import mlflow.pyfunc
 from typing import List, Set, Dict, Tuple, Optional, Mapping, IO
 from google.protobuf.json_format import MessageToJson, ParseDict
-import pandas as pd  # to support builtin model deployment apis
+import pandas as pd  # to support builtin model deployment APIS
 
 # Define the model class
 
@@ -173,8 +174,8 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
         return transformed_spec
 
     def fit(
-            self, transformed_spec: Mapping[str, Dict[str, List]], data_to_fit_spec: str
-    ):
+            self, transformed_spec: Mapping[str, Dict[str, List]], data_to_fit_spec: str,
+            replace_data_value=False):
         """
         A fit function that joins a transformed spec with a data location
         via a string object.
@@ -182,6 +183,9 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
         Args:
             transformed_spec (Mapping[str, Dict[str, List]]): A vegalite specification
             data_to_fit_spec (str): A string representing a data location.
+            replace_data_value (bool): A flag to indicate if a more complex object should be
+            inserted for the data value, vs. just the url for example, 
+            when using a named data source.
 
         Returns:
             The return is a Tuple of two objects:
@@ -193,11 +197,14 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
         # TODO: implement population of data field
 
         fitted_spec = copy.deepcopy(transformed_spec)
-        fitted_spec.update(data={"url": data_to_fit_spec})
+        if not replace_data_value:
+            fitted_spec.update(data={"url": data_to_fit_spec})
+        if replace_data_value:
+            fitted_spec.update(data= data_to_fit_spec)
 
         return fitted_spec, json.dumps(fitted_spec)
 
-    def validate(self) -> Mapping[str, Dict[str, List]]:
+    def validate(self, replace_data_value=False) -> Mapping[str, Dict[str, List]]:
         """
         This is similiar to fit and needs to be evaluated to see if it
         makes sense.  The point of this function is to fit it with 
@@ -210,7 +217,8 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
         """
 
         validation_spec = copy.deepcopy(self.transformed_spec)
-        validation_spec, _ = self.fit(validation_spec, self.reference_data)
+        validation_spec, _ = self.fit(validation_spec, self.reference_data, 
+        replace_data_value=replace_data_value)
 
         VGL_VIZ.create_artifact_folders()
         spec_folder_name = VGL_VIZ.all_folders.get("spec_folder")
@@ -221,8 +229,8 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
         return validation_spec
 
     def predict(
-            self, context: Optional[List] = None, model_input= None
-    ) -> Mapping[str, Dict[str, List]]:
+            self, context: Optional[List] = None, model_input= None,
+            replace_data_value=False) -> Mapping[str, Dict[str, List]]:
         """
         This is an implementation of the predict function associated with MLflow's pyfunc
         flavor.  The type check is an adaptation to an older version (current at the time
@@ -235,7 +243,12 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
             Note that a Pandas DataFrame is the expected input type when this function is used
             with the builtin model serve API invocation endpoint.  For other use cases, where
             the function is loaded and used directly, a string can be passed.
+
             context (Optional[List], optional): [description]. Defaults to None.
+
+            replace_data_value (bool): A flag to indicate if a more complex object should be
+            inserted for the data value, vs. just the url for example, 
+            when using a named data source.
 
         Returns:
             predict_spec (Mapping[str, Dict[str, List]]): Transformed spec attribute populated with
@@ -254,7 +267,8 @@ class VGL_VIZ(mlflow.pyfunc.PythonModel):
             source_data = model_input
 
         # standard workflow
-        predict_spec, predict_spec_string = self.fit(predict_spec, source_data)
+        predict_spec, predict_spec_string = self.fit(predict_spec, source_data, 
+        replace_data_value=replace_data_value)
 
         return predict_spec
 
